@@ -145,18 +145,14 @@ footer{padding:20px 0 8px;font-size:12px;color:var(--muted)}
 <div class="ctx">
   <div class="wrap">
     <div>
-      <span class="lbl" style="font-size:12px;color:var(--muted);display:block;margin-bottom:2px">Channel outlet</span>
-      <div class="seg" id="chSeg" role="group" aria-label="Channel">
-        <button data-ch="retail">Retail</button>
-        <button data-ch="gromin">Gromin/Grosir/TDP</button>
-        <button data-ch="so">SO</button>
-      </div>
+      <label class="lbl" for="chSel">Channel outlet</label>
+      <select id="chSel"></select>
     </div>
     <div>
       <label class="lbl" for="grsm">Area GRSM</label>
       <select id="grsm"></select>
     </div>
-    <label class="tog"><input type="checkbox" id="gmm"> Outlet GMM</label>
+    <div class="small muted" id="chInfo" style="flex-basis:100%;margin-top:-4px"></div>
     <label class="tog"><input type="checkbox" id="firstTx"> Transaksi pertama TPH 350 LS</label>
   </div>
 </div>
@@ -273,7 +269,25 @@ const WEST = ['1','2','3A','3B','3C','4'];
 const G3 = ['3A','3B','3C'];
 const G34 = ['3A','3B','3C','4'];
 const ALL = GRSM;
-const CH_NAME = {retail:'Retail', gromin:'Gromin/Grosir/TDP', so:'SO'};
+/* Channel rinci. base = kolom price list yang dipakai; ftx = aturan bonus first transaction TPH 350 LS */
+const CHANNELS = [
+  {id:'retail',   grp:'Retail',          name:'Retail',                 base:'retail', ftx:'ret'},
+  {id:'retkhusus',grp:'Retail',          name:'Retail khusus (Kantin, Kuliner, Lokpen, Lokman, Koperasi, RM, Rest Area, Bengkel, Kantin Sekolah, Topping Up)', short:'Retail khusus', base:'retail', ftx:'ret'},
+  {id:'gmmret',   grp:'Retail',          name:'GMM Retail',             base:'retail', ftx:'ret', gmm:true},
+  {id:'tdp',      grp:'Grosir & Gromin', name:'TDP',                    base:'gromin', ftx:'ret'},
+  {id:'grosir',   grp:'Grosir & Gromin', name:'Grosir',                 base:'gromin', ftx:'ws'},
+  {id:'gromin',   grp:'Grosir & Gromin', name:'Gromin',                 base:'gromin', ftx:'ws'},
+  {id:'gmmws',    grp:'Grosir & Gromin', name:'GMM Grosir / Gromin',    base:'gromin', ftx:'ws', gmm:true},
+  {id:'so',       grp:'SO',              name:'SO',                     base:'so',     ftx:'so'},
+  {id:'gmmso',    grp:'SO',              name:'GMM SO',                 base:'so',     ftx:'so', gmm:true},
+];
+const CHN = Object.fromEntries(CHANNELS.map(c=>[c.id,c]));
+const CH_NAME = Object.fromEntries(CHANNELS.map(c=>[c.id,c.short||c.name]));
+const BASE_NAME = {retail:'Retail', gromin:'Gromin', so:'SO'};
+const RET = ['retail','retkhusus','gmmret'];
+const WS_ALL = ['tdp','grosir','gromin','gmmws','so','gmmso'];
+const ALLCH = CHANNELS.map(c=>c.id);
+const FTX = {so:{need:10,txt:'1 ctn'}, ws:{need:3,txt:'6 botol',btl:6}, ret:{need:1,txt:'1 botol',btl:1}};
 
 const P = (id, brand, name, retail, gromin, so, extra={}) => ({id, brand, name, pl:{retail, gromin, so}, unit:'ctn', ...extra});
 const PRODUCTS = [
@@ -325,45 +339,49 @@ const GAL15 = {retail:{min:10,disc:500}, gromin:{min:60,disc:300}, so:{min:250,d
 
 /* Program catalog (untuk tab Program & rekomendasi cross-sell) */
 const PROGRAMS = [
-  {id:'tphdof',brand:'Teh Pucuk Harum',title:'DOF TPH 350/500ml (mix)',ch:['gromin','so'],reg:WEST,start:'2026-10-26',end:'2026-11-22',
+  {id:'tphdof',brand:'Teh Pucuk Harum',title:'DOF TPH 350/500ml (mix)',ch:WS_ALL,reg:WEST,start:'2026-10-26',end:'2026-11-22',
    desc:'Diskon per karton berdasarkan qty mix TPH 350/500ml: 25–99 Rp200 · 100–299 Rp300 · 300–499 Rp400 · ≥500 Rp700 · ≥500 + min. 10 ctn TPH 350 LS/500 Jasmine/500 LS Rp900.',sku:'tph350j',add:25},
-  {id:'tphret',brand:'Teh Pucuk Harum',title:'Promo Retail TPH 350/500ml',ch:['retail'],reg:WEST,start:'2026-10-26',end:'2026-11-22',
+  {id:'tphret',brand:'Teh Pucuk Harum',title:'Promo Retail TPH 350/500ml',ch:RET,reg:WEST,start:'2026-10-26',end:'2026-11-22',
    desc:'Min. 3 ctn (boleh mix 350/500, Reg/LS) diskon Rp300/ctn. Retail, GMM Retail, Lokman, Kantin, Koperasi, Rest Area, Bengkel, RM, Kuliner, Lokpen, TDP Retail, Topping Up.',sku:'tph350j',add:3},
-  {id:'tphls',brand:'Teh Pucuk Harum',title:'TPH 350ml LS · First Transaction',ch:['retail','gromin','so'],reg:ALL,start:'2026-11-05',end:'2026-11-22',firstTx:true,
-   desc:'Hanya transaksi pertama. SO beli 10 ctn bonus 1 ctn · Grosir/Gromin beli 3 ctn bonus 6 btl · Retail/TDP/Kuliner/Lokpen beli 1 ctn bonus 1 btl.',sku:'tph350ls',addBy:{so:10,gromin:3,retail:1}},
+  {id:'tphls',brand:'Teh Pucuk Harum',title:'TPH 350ml LS · First Transaction',ch:ALLCH,reg:ALL,start:'2026-11-05',end:'2026-11-22',firstTx:true,
+   desc:'Hanya transaksi pertama. SO beli 10 ctn bonus 1 ctn · Grosir/Gromin beli 3 ctn bonus 6 btl · Retail/TDP/Kuliner/Lokpen beli 1 ctn bonus 1 btl.',sku:'tph350ls',addFn:()=>FTX[CHN[S.ch].ftx].need},
   {id:'ikat',brand:'Teh Pucuk Harum',title:'Ikat Target TPH 350 & 500ml',ch:['gromin','so'],reg:G34,start:'2026-10-26',end:'2026-11-22',
    desc:'Cashback + bonus CRT TPH 350ml per zona. Syarat: capai 100% target Nov & Week 03 min. 70%, wajib surat ikat target.',tab:'ikat'},
-  {id:'tph1300',brand:'Teh Pucuk Harum',title:'TPH 1300ml Beli 5 Bonus 1',ch:['gromin','so'],reg:WEST,start:'2026-10-26',end:'2026-12-27',gmm:true,
+  {id:'tph1300',brand:'Teh Pucuk Harum',title:'TPH 1300ml Beli 5 Bonus 1',ch:['grosir','gromin','so','gmmret','gmmws','gmmso'],reg:WEST,start:'2026-10-26',end:'2026-12-27',
    desc:'Beli 5 karton bonus 1 karton, kelipatan, lock budget. Grosir, Gromin, SO, GMM.',sku:'tph1300',add:5},
-  {id:'lychee',brand:'Teh Pucuk Harum',title:'TPH Lychee Bliss Beli 1 Bonus 1',ch:['retail'],reg:G3,start:'2026-11-09',end:'2026-11-22',
+  {id:'lychee',brand:'Teh Pucuk Harum',title:'TPH Lychee Bliss Beli 1 Bonus 1',ch:RET,reg:G3,start:'2026-11-09',end:'2026-11-22',
    desc:'Beli 1 karton bonus 1 karton, maks. bonus 2 karton per transaksi. All Retail.',sku:'lychee',add:2},
-  {id:'lmdof',brand:'Le Minerale',title:'DOF LM Botol mix 4 SKU',ch:['retail','gromin','so'],reg:G3,start:'2026-10-26',end:'2026-11-22',
+  {id:'lmdof',brand:'Le Minerale',title:'DOF LM Botol mix 4 SKU',ch:ALLCH,reg:G3,start:'2026-10-26',end:'2026-11-22',
    desc:'Qty akumulasi mix LM 600ml, 1500ml, 330ml, 3L. Tier 10–49 s/d ≥450 ctn. Gromin min. 50 ctn, SO min. 450 ctn untuk harga channel.',sku:'lm600',add:10},
-  {id:'gal15',brand:'Le Minerale',title:'DOF Galon 15L',ch:['retail','gromin','so'],reg:WEST,start:'2026-10-26',end:'2026-11-22',
-   desc:'Retail/LMD/LMHS min. 10 galon disc Rp500 · Gromin/Grosir min. 60 galon disc Rp300 · SO min. 250 galon disc Rp300.',sku:'gal15',addBy:{retail:10,gromin:60,so:250}},
-  {id:'galcb',brand:'Le Minerale',title:'Cashback Bulanan Galon 15L',ch:['gromin','so'],reg:G34,start:'2026-10-26',end:'2026-11-22',
+  {id:'gal15',brand:'Le Minerale',title:'DOF Galon 15L',ch:ALLCH,reg:WEST,start:'2026-10-26',end:'2026-11-22',
+   desc:'Retail/LMD/LMHS min. 10 galon disc Rp500 · Gromin/Grosir min. 60 galon disc Rp300 · SO min. 250 galon disc Rp300.',sku:'gal15',addFn:()=>GAL15[base()].min},
+  {id:'galcb',brand:'Le Minerale',title:'Cashback Bulanan Galon 15L',ch:['grosir','gromin','gmmws','so','gmmso'],reg:G34,start:'2026-10-26',end:'2026-11-22',
    desc:'Gromin/Grosir mulai 300 galon/bulan Rp350/galon s/d Rp600. SO mulai 1.500 galon Rp300 s/d Rp750/galon.',tab:'galon'},
-  {id:'gal5',brand:'Le Minerale',title:'Promo Galon 5L',ch:['retail','gromin','so'],reg:WEST,start:'2026-10-26',end:'2026-11-22',
+  {id:'gal5',brand:'Le Minerale',title:'Promo Galon 5L',ch:ALLCH,reg:WEST,start:'2026-10-26',end:'2026-11-22',
    desc:'Min. 4 ctn bonus 1 pcs Galon 5L (maks. 2 pcs) · Min. 15 ctn bonus 1 ctn (15+1), kelipatan.',sku:'gal5',add:15},
-  {id:'s7kret',brand:'Susu Tujuh Kurma',title:'S7K Kaleng Retail',ch:['retail'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
+  {id:'s7kret',brand:'Susu Tujuh Kurma',title:'S7K Kaleng Retail',ch:RET,reg:ALL,start:'2026-10-26',end:'2026-11-22',
    desc:'Disc Rp3.000 per 6 kaleng, kelipatan, maks. Rp12.000/transaksi. PL Rp114.000 → nett Rp108.000 (1 ctn).',sku:'s7k12',add:2},
-  {id:'s7kdist',brand:'Susu Tujuh Kurma',title:'Distribusi S7K Kaleng',ch:['gromin','so'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
+  {id:'s7kdist',brand:'Susu Tujuh Kurma',title:'Distribusi S7K Kaleng',ch:WS_ALL,reg:ALL,start:'2026-10-26',end:'2026-11-22',
    desc:'10–14 ctn Rp2.000 · 15–24 ctn Rp3.000 · ≥25 ctn Rp4.000 per ctn.',sku:'s7k12',add:10},
-  {id:'s7kkids',brand:'Susu Tujuh Kurma',title:'S7K Kids GT 125ml',ch:['retail','gromin','so'],reg:G34,start:'2026-11-02',end:'2026-11-22',gmm:true,
-   desc:'Retail: tiap 20 pcs pot. Rp380/pcs (maks. Rp30.400/transaksi). Gromin/Grosir/TDP/SO: beli 10 bonus 1 ctn (maks. 5). GMM: faktur Rp12.000/ctn + POSM.',sku:'s7kkids',addBy:{retail:2,gromin:10,so:10}},
-  {id:'nm',brand:'Nipis Madu',title:'Trade Promo Nipis Madu 330ml',ch:['retail','gromin','so'],reg:['3A'],start:'2026-10-26',end:'2026-11-22',
+  {id:'s7kkids',brand:'Susu Tujuh Kurma',title:'S7K Kids GT 125ml',ch:ALLCH,reg:G34,start:'2026-11-02',end:'2026-11-22',
+   desc:'Retail: tiap 20 pcs pot. Rp380/pcs (maks. Rp30.400/transaksi). Gromin/Grosir/TDP/SO: beli 10 bonus 1 ctn (maks. 5). GMM: faktur Rp12.000/ctn + POSM.',sku:'s7kkids',addFn:()=>CHN[S.ch].gmm?1:base()==='retail'?2:10},
+  {id:'nm',brand:'Nipis Madu',title:'Trade Promo Nipis Madu 330ml',ch:ALLCH,reg:['3A'],start:'2026-10-26',end:'2026-11-22',
    desc:'Disc 5–19 ctn Rp200 s/d ≥700 ctn Rp700 per ctn. All outlet GT.',sku:'nm330',add:5},
-  {id:'k78c',brand:'Kopiko & Collagena',title:'Push Distribusi Kopiko 78C',ch:['gromin','so'],reg:WEST,start:'2026-10-26',end:'2026-11-22',
+  {id:'k78c',brand:'Kopiko & Collagena',title:'Push Distribusi Kopiko 78C',ch:['so','gromin','grosir','tdp'],reg:WEST,start:'2026-10-26',end:'2026-11-22',
    desc:'Mix 5–9 ctn Rp600 · 10–49 ctn Rp1.200 · ≥50 ctn Rp1.800 per ctn (12 btl).',sku:'k78c',add:5},
-  {id:'colret',brand:'Kopiko & Collagena',title:'Collagena Retail (BARU)',ch:['retail'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
+  {id:'colret',brand:'Kopiko & Collagena',title:'Collagena Retail (BARU)',ch:RET,reg:ALL,start:'2026-10-26',end:'2026-11-22',
    desc:'Disc Rp3.000 per 6 kaleng, kelipatan, maks. Rp12.000/transaksi. PL Rp120.000 → nett Rp114.000 (1 ctn).',sku:'col12',add:2},
-  {id:'coldist',brand:'Kopiko & Collagena',title:'Distribusi Collagena',ch:['gromin','so'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
+  {id:'coldist',brand:'Kopiko & Collagena',title:'Distribusi Collagena',ch:['so','grosir','gromin','tdp'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
    desc:'15–24 ctn disc 2% · ≥25 ctn disc 4%.',sku:'col12',add:15},
 ];
 
 /* ================= STATE ================= */
-const S = {ch:'gromin', grsm:'3A', gmm:false, firstTx:false, cart:{}, tab:'sim'};
+const S = {ch:'gromin', grsm:'3A', firstTx:false, cart:{}, tab:'sim'};
 try{ const s = JSON.parse(localStorage.getItem('kps-nov26')||'null'); if(s) Object.assign(S, s); }catch(e){}
+if(!CHN[S.ch]) S.ch='gromin';
+const base = () => CHN[S.ch].base;
+const can = id => { const p=PROGRAMS.find(x=>x.id===id); return !!p && p.ch.includes(S.ch); };
+const addQty = p => p.addFn ? p.addFn() : p.add;
 const save = () => { try{ localStorage.setItem('kps-nov26', JSON.stringify(S)); }catch(e){} };
 
 /* ================= HELPERS ================= */
@@ -378,7 +396,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 const progActive = p => daysTo(p.start) <= 0 && daysTo(p.end) >= 0;
 function progEligible(p){
   if(!inReg(p.reg)) return {ok:false, why:'Area GRSM '+S.grsm+' tidak termasuk'};
-  const chOk = p.ch.includes(S.ch) || (S.gmm && p.gmm);
+  const chOk = p.ch.includes(S.ch);
   if(!chOk) return {ok:false, why:'Tidak berlaku untuk channel '+CH_NAME[S.ch]};
   if(p.firstTx && !S.firstTx) return {ok:true, why:'Aktifkan “Transaksi pertama” jika outlet baru pertama kali beli', soft:true};
   if(daysTo(p.end) < 0) return {ok:false, why:'Periode sudah berakhir'};
@@ -388,7 +406,7 @@ function progEligible(p){
 
 /* ================= ENGINE ================= */
 function compute(){
-  const ch = S.ch, cart = S.cart;
+  const ch = base(), cart = S.cart, C = CHN[S.ch];
   const q = id => Math.max(0, +cart[id]||0);
   const lines = {}, bonuses = [], recs = [];
   for(const p of PRODUCTS){ if(q(p.id)>0) lines[p.id] = {p, qty:q(p.id), pl:p.pl[ch], disc:0, tags:[]}; }
@@ -404,7 +422,7 @@ function compute(){
   if(mix>0){
     if(!inReg(WEST)){
       tphIds.forEach(id=>L(id)&&L(id).tags.push(['DOF TPH hanya GRSM 1–4','bad']));
-    } else if(ch==='retail'){
+    } else if(can('tphret')){
       if(mix>=3) tphIds.forEach(id=>setUnitDisc(id,300,'Promo retail −Rp300/ctn'));
       else addRec({hot:true, prog:'tphret', title:'TPH: tambah '+(3-mix)+' ctn untuk promo retail',
         text:'Min. 3 ctn mix 350/500ml dapat diskon Rp300/ctn → hemat '+fmt(300*3)+' total.', add:{id:'tph350j',qty:3-mix}});
@@ -429,19 +447,19 @@ function compute(){
   }
   /* First transaction TPH 350 LS */
   if(S.firstTx && q('tph350ls')>=0){
-    const need = {so:10, gromin:3, retail:1}[ch];
+    const F = FTX[C.ftx], need = F.need;
     const ql = q('tph350ls'); const pl = BYID.tph350ls.pl[ch];
     if(ql>=need){
-      if(ch==='so') bonuses.push({prog:'tphls', text:'First transaction TPH 350 LS: bonus <b>1 ctn TPH 350 LS</b>', value:pl, ctn:{id:'tph350ls',n:1}});
-      else { const btl = ch==='gromin'?6:1; bonuses.push({prog:'tphls', text:'First transaction TPH 350 LS: bonus <b>'+btl+' botol TPH 350 LS</b>', value:pl/24*btl}); }
+      if(C.ftx==='so') bonuses.push({prog:'tphls', text:'First transaction TPH 350 LS: bonus <b>1 ctn TPH 350 LS</b>', value:pl, ctn:{id:'tph350ls',n:1}});
+      else { const btl = F.btl; bonuses.push({prog:'tphls', text:'First transaction TPH 350 LS: bonus <b>'+btl+' botol TPH 350 LS</b>', value:pl/24*btl}); }
     } else if(active('tphls')) {
       addRec({hot:true, prog:'tphls', title:'Transaksi pertama: beli '+need+' ctn TPH 350 LS',
-        text:'Outlet baru dapat bonus '+(ch==='so'?'1 ctn':ch==='gromin'?'6 botol':'1 botol')+' TPH 350 LS (sekali saja).', add:{id:'tph350ls', qty:need-ql}});
+        text:'Outlet baru dapat bonus '+F.txt+' TPH 350 LS (sekali saja).', add:{id:'tph350ls', qty:need-ql}});
     }
   }
   /* TPH 1300 5+1 */
   if(q('tph1300')>0){
-    const ok = inReg(WEST) && (ch!=='retail' || S.gmm);
+    const ok = inReg(WEST) && can('tph1300');
     const qq = q('tph1300');
     if(ok){
       const b = Math.floor(qq/5);
@@ -449,11 +467,11 @@ function compute(){
       const need = 5 - qq%5;
       if(need<5) addRec({hot: need<=2, prog:'tph1300', title:'TPH 1300ml: tambah '+need+' ctn → bonus +1 ctn',
         text:'Program 5+1 kelipatan. Nett efektif SO Rp40.333 / Gromin Rp40.917 per ctn.', add:{id:'tph1300',qty:need}});
-    } else L('tph1300').tags.push([ch==='retail'?'5+1 tidak untuk Retail':'5+1 hanya GRSM 1–4','bad']);
+    } else L('tph1300').tags.push([!can('tph1300')?'5+1 tidak berlaku untuk '+CH_NAME[S.ch]:'5+1 hanya GRSM 1–4','bad']);
   }
   /* Lychee */
   if(q('lychee')>0){
-    if(ch==='retail' && inReg(G3) && active('lychee')){
+    if(can('lychee') && inReg(G3) && active('lychee')){
       const b = Math.min(2, q('lychee'));
       bonuses.push({prog:'lychee', text:'Lychee Bliss beli 1 bonus 1: <b>'+b+' ctn</b>', value:b*BYID.lychee.pl[ch], ctn:{id:'lychee',n:b}});
       if(q('lychee')<2) addRec({hot:true, prog:'lychee', title:'Lychee Bliss: tambah 1 ctn → bonus jadi 2 ctn', text:'Maks. bonus 2 ctn per transaksi.', add:{id:'lychee',qty:1}});
@@ -469,7 +487,7 @@ function compute(){
       const idxOf = m => { let i=-1; LM_TIERS.forEach((t,k)=>{ if(m>=t.min) i=k; }); return i; };
       const ci = idxOf(lmMix);
       lmIds.forEach(id=>{ const l=L(id); if(!l) return; const np = priceAt(id,ci); const d = l.pl-np;
-        if(d>0) setUnitDisc(id, d, 'DOF mix '+LM_TIERS[ci].label+' −Rp'+num(d)+'/ctn'); else if(ci>=0) l.tags.push(['Tier '+LM_TIERS[ci].label+': belum ada potongan untuk '+CH_NAME[ch],'warn']); });
+        if(d>0) setUnitDisc(id, d, 'DOF mix '+LM_TIERS[ci].label+' −Rp'+num(d)+'/ctn'); else if(ci>=0) l.tags.push(['Tier '+LM_TIERS[ci].label+': belum ada potongan untuk '+CH_NAME[S.ch],'warn']); });
       const cost = idx => lmIds.reduce((a,id)=>a+q(id)*priceAt(id,idx),0);
       const cur = cost(ci);
       for(let k=ci+1;k<LM_TIERS.length;k++){
@@ -489,8 +507,8 @@ function compute(){
     if(!inReg(WEST)) L('gal15').tags.push(['DOF galon hanya GRSM 1–4','bad']);
     else if(qq>=g.min) setUnitDisc('gal15', g.disc, 'DOF galon −Rp'+num(g.disc)+'/galon');
     else addRec({hot: g.min-qq <= Math.max(10, g.min*0.3), prog:'gal15', title:'Galon 15L: tambah '+(g.min-qq)+' galon → disc Rp'+num(g.disc)+'/galon',
-      text:'Min. '+g.min+' galon untuk '+CH_NAME[ch]+'. Total diskon jadi '+fmt(g.min*g.disc)+'.', add:{id:'gal15',qty:g.min-qq}});
-    if(ch!=='retail' && inReg(G34)) L('gal15').tags.push(['Cek cashback bulanan → tab Cashback Galon','acc']);
+      text:'Min. '+g.min+' galon untuk '+CH_NAME[S.ch]+'. Total diskon jadi '+fmt(g.min*g.disc)+'.', add:{id:'gal15',qty:g.min-qq}});
+    if(can('galcb') && inReg(G34)) L('gal15').tags.push(['Cek cashback bulanan → tab Cashback Galon','acc']);
   }
   /* Galon 5L */
   if(q('gal5')>0){
@@ -508,7 +526,7 @@ function compute(){
   /* S7K kaleng */
   if(q('s7k12')>0){
     const qq=q('s7k12');
-    if(ch==='retail'){
+    if(can('s7kret')){
       const d = Math.min(12000, qq*6000); L('s7k12').disc = d; L('s7k12').tags.push(['Disc Rp3.000/6 kaleng (maks Rp12.000)','ok']);
       if(qq===1) addRec({prog:'s7kret', title:'S7K Kaleng: tambah 1 ctn → diskon maksimal Rp12.000', text:'Diskon Rp3.000 per 6 kaleng, maks. Rp12.000/transaksi (2 ctn).', add:{id:'s7k12',qty:1}});
     } else {
@@ -521,7 +539,7 @@ function compute(){
   if(q('s7kkids')>0){
     const qq=q('s7kkids');
     if(!inReg(G34) || !active('s7kkids')) L('s7kkids').tags.push(['Promo hanya GRSM 3A–3C & 4, 2–22 Nov','bad']);
-    else if(S.gmm){ setUnitDisc('s7kkids', 12000, 'GMM faktur −Rp12.000/ctn (wajib POSM)'); }
+    else if(C.gmm){ setUnitDisc('s7kkids', 12000, 'GMM faktur −Rp12.000/ctn (wajib POSM)'); }
     else if(ch==='retail'){
       const d=Math.min(30400, qq*15200); L('s7kkids').disc=d; L('s7kkids').tags.push(['Pot. Rp380/pcs per 20 pcs (maks Rp30.400)','ok']);
       if(qq===1) addRec({prog:'s7kkids', title:'S7K Kids: tambah 1 ctn → potongan maksimal Rp30.400', text:'Nett Rp100.000/ctn untuk 2 ctn.', add:{id:'s7kkids',qty:1}});
@@ -541,7 +559,7 @@ function compute(){
   /* Kopiko 78C */
   if(q('k78c')>0){
     const qq=q('k78c');
-    if(ch==='retail') L('k78c').tags.push(['Retail tanpa promo','warn']);
+    if(!can('k78c')) L('k78c').tags.push(['Tanpa promo untuk '+CH_NAME[S.ch],'warn']);
     else if(!inReg(WEST)) L('k78c').tags.push(['Promo hanya GRSM 1–4','bad']);
     else { const t=tierOf(qq,K78_TIERS); if(t) setUnitDisc('k78c',t.disc,'Tier '+t.label+' −Rp'+num(t.disc)+'/ctn');
       const nt=nextTier(qq,K78_TIERS); if(nt){ const need=nt.min-qq; addRec({hot:need<=Math.max(3,qq*0.3), prog:'k78c', title:'Kopiko 78C: tambah '+need+' ctn → tier '+nt.label, text:'Diskon jadi Rp'+num(nt.disc)+'/ctn. Total diskon '+fmt(nt.disc*nt.min)+' (sekarang '+fmt((t?t.disc:0)*qq)+').', add:{id:'k78c',qty:need}}); } }
@@ -549,10 +567,11 @@ function compute(){
   /* Collagena */
   if(q('col12')>0){
     const qq=q('col12'), pl=BYID.col12.pl[ch];
-    if(ch==='retail'){
+    if(can('colret')){
       L('col12').disc=Math.min(12000,qq*6000); L('col12').tags.push(['Disc Rp3.000/6 kaleng (maks Rp12.000)','ok']);
       if(qq===1) addRec({prog:'colret', title:'Collagena: tambah 1 ctn → diskon maksimal Rp12.000', text:'Diskon Rp3.000 per 6 kaleng, maks. Rp12.000/transaksi.', add:{id:'col12',qty:1}});
-    } else {
+    } else if(!can('coldist')) L('col12').tags.push(['Tanpa promo untuk '+CH_NAME[S.ch],'warn']);
+    else {
       const t=tierOf(qq,COL_TIERS); if(t) setUnitDisc('col12', pl*t.pct/100, 'Distribusi '+t.label+' −'+t.pct+'%');
       const nt=nextTier(qq,COL_TIERS); if(nt){ const need=nt.min-qq; addRec({hot:need<=Math.max(3,qq*0.3), prog:'coldist', title:'Collagena: tambah '+need+' ctn → disc '+nt.pct+'%', text:'Nett jadi '+fmt(pl*(1-nt.pct/100))+'/ctn.', add:{id:'col12',qty:need}}); }
     }
@@ -583,7 +602,7 @@ function renderProducts(){
     if(f && !(p.name+' '+p.brand).toLowerCase().includes(f)) continue;
     if(p.brand!==brand){ brand=p.brand; html += '<div class="brand">'+esc(brand)+'</div>'; }
     const qty = +S.cart[p.id]||0;
-    html += '<div class="prod'+(qty?' has':'')+'" data-id="'+p.id+'"><div class="nm"><b>'+esc(p.name)+'</b><small>PL '+CH_NAME[S.ch]+' '+fmt(p.pl[S.ch])+'/'+p.unit+'</small></div>'+
+    html += '<div class="prod'+(qty?' has':'')+'" data-id="'+p.id+'"><div class="nm"><b>'+esc(p.name)+'</b><small>PL '+BASE_NAME[base()]+' '+fmt(p.pl[base()])+'/'+p.unit+'</small></div>'+
       '<div class="step"><button data-d="-1" aria-label="Kurangi">−</button><input type="number" inputmode="numeric" min="0" value="'+(qty||'')+'" placeholder="0" aria-label="Qty '+esc(p.name)+'"><button data-d="1" aria-label="Tambah">+</button></div></div>';
   }
   $('#prodList').innerHTML = html || '<div class="empty">SKU tidak ditemukan</div>';
@@ -618,7 +637,7 @@ function renderSummary(){
     (x.add?'<button class="btn sm pri" data-add="'+x.add.id+'" data-qty="'+x.add.qty+'">+'+x.add.qty+'</button>':'')+'</div>'; });
   if(R.cross.length){
     r += '<p class="small muted" style="margin:14px 0 4px;font-weight:600">Program lain yang berlaku untuk outlet ini:</p>';
-    for(const p of R.cross){ const qn = p.addBy ? p.addBy[S.ch] : p.add;
+    for(const p of R.cross){ const qn = addQty(p);
       r += '<div class="rec"><span class="ic" style="background:var(--accent)">+</span><div class="tx"><b>'+esc(p.title)+'</b>'+esc(p.desc)+(daysTo(p.end)<=7?' <span class="tag acc">sisa '+daysTo(p.end)+' hari</span>':'')+'</div>'+
         '<button class="btn sm" data-add="'+p.sku+'" data-qty="'+qn+'">Coba '+qn+'</button></div>'; }
   }
@@ -644,7 +663,7 @@ function renderPrograms(){
       '<div class="row" style="margin-top:auto;padding-top:6px">'+(ok&&p.sku?'<button class="btn sm pri" data-sim="'+p.id+'">Simulasikan</button>':'')+(ok&&p.tab?'<button class="btn sm pri" data-goto="'+p.tab+'">Buka simulasi</button>':'')+'</div></div>';
   }
   $('#progGrid').innerHTML = h || '<div class="empty">Tidak ada program untuk kombinasi ini.</div>';
-  $('#progInfo').textContent = n+' program berlaku untuk '+CH_NAME[S.ch]+(S.gmm?' (GMM)':'')+' · GRSM '+S.grsm;
+  $('#progInfo').textContent = n+' program berlaku untuk '+CH_NAME[S.ch]+' · GRSM '+S.grsm;
 }
 
 function renderPL(){
@@ -681,7 +700,7 @@ function renderIkat(){
     const est = r.est + r.bonus*pl350;
     h+='<tr class="'+(r.z===ikSel?'sel':'')+(r.allowed?'':' dis')+'"><td><b>'+r.z+'</b>'+(rows.indexOf(r)===bi?' <span class="tag">zona dasar</span>':'')+'</td><td>'+num(r.min)+(r.max===Infinity?'+':'–'+num(r.max))+'</td><td class="n">'+(r.pct?'+'+r.pct+'%':'—')+'</td><td class="n">'+num(r.tgt)+'</td><td class="n">Rp'+num(r.cb)+'/ctn</td><td class="n">'+r.bonus+' ctn</td><td class="n">'+fmt(est)+'</td><td>'+(r.allowed?'<button class="btn sm'+(r.z===ikSel?' pri':'')+'" data-zone="'+r.z+'">Pilih</button>':'<span class="small muted">'+r.why+'</span>')+'</td></tr>';
   }
-  h+='</tbody></table></div><p class="note">*Estimasi = cashback × target + bonus CRT TPH 350ml dinilai PL '+CH_NAME[ch]+' ('+fmt(pl350)+'/ctn). Interpretasi: cashback per karton, bonus dalam karton TPH 350ml — konfirmasi ke koordinator area.</p>';
+  h+='</tbody></table></div><p class="note">*Estimasi = cashback × target + bonus CRT TPH 350ml dinilai PL '+BASE_NAME[ch]+' ('+fmt(pl350)+'/ctn). Interpretasi: cashback per karton, bonus dalam karton TPH 350ml — konfirmasi ke koordinator area.</p>';
   if(sel){
     const ach = real ? real/sel.tgt*100 : null;
     const pass = real ? (ach>=100 && w3) : null;
@@ -722,7 +741,7 @@ function renderGalon(){
 /* ---- Share ---- */
 function shareText(){
   if(!R||!R.lines.length) return '';
-  let t='*Simulasi Order – Program Nov 2026*\nChannel: '+CH_NAME[S.ch]+(S.gmm?' (GMM)':'')+' · GRSM '+S.grsm+'\n\n';
+  let t='*Simulasi Order – Program Nov 2026*\nChannel: '+CHN[S.ch].name+' · GRSM '+S.grsm+'\n\n';
   for(const l of R.lines){ const net=l.pl*l.qty-l.disc; t+='• '+l.p.name+': '+num(l.qty)+' '+l.p.unit+' × '+fmt(net/l.qty)+' = '+fmt(net)+'\n'; }
   if(R.bonuses.length){ t+='\nBonus:\n'; R.bonuses.forEach(b=>t+='🎁 '+b.text.replace(/<[^>]+>/g,'')+'\n'); }
   t+='\nTotal PL: '+fmt(R.gross)+'\nDiskon: −'+fmt(R.disc)+'\n*Total nett: '+fmt(R.nett)+'*\n';
@@ -736,15 +755,16 @@ function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('on'
 function setQty(id, v){ v=Math.max(0, Math.floor(+v||0)); if(v) S.cart[id]=v; else delete S.cart[id]; renderSummary(); }
 function setTab(t){ S.tab=t; document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===t)); document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+t)); $('#bar').style.display = t==='sim'?'':'none'; document.body.style.paddingBottom = t==='sim'?'84px':'0'; save(); }
 function renderAll(){
-  document.querySelectorAll('#chSeg button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.ch===S.ch));
-  $('#grsm').value=S.grsm; $('#gmm').checked=S.gmm; $('#firstTx').checked=S.firstTx;
+  $('#chSel').value=S.ch; $('#grsm').value=S.grsm; $('#firstTx').checked=S.firstTx;
+  const nOk = PROGRAMS.filter(p=>progEligible(p).ok && progActive(p)).length;
+  $('#chInfo').textContent = CHN[S.ch].name+' · harga dasar PL '+BASE_NAME[base()]+' · '+nOk+' program berlaku di GRSM '+S.grsm;
   renderProducts(); renderSummary(); renderPrograms(); renderGalon();
 }
 
 $('#grsm').innerHTML = GRSM.map(g=>'<option value="'+g+'">GRSM '+g+'</option>').join('');
-$('#chSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; S.ch=b.dataset.ch; if(S.ch!=='retail'){ $('#ikCh').value=S.ch; $('#gcCh').value=S.ch; } renderAll(); renderIkat(); });
+$('#chSel').innerHTML = [...new Set(CHANNELS.map(c=>c.grp))].map(g=>'<optgroup label="'+g+'">'+CHANNELS.filter(c=>c.grp===g).map(c=>'<option value="'+c.id+'">'+esc(c.short||c.name)+'</option>').join('')+'</optgroup>').join('');
+$('#chSel').addEventListener('change', e=>{ S.ch=e.target.value; if(base()!=='retail'){ $('#ikCh').value=base(); $('#gcCh').value=base(); } renderAll(); renderIkat(); });
 $('#grsm').addEventListener('change', e=>{ S.grsm=e.target.value; renderAll(); });
-$('#gmm').addEventListener('change', e=>{ S.gmm=e.target.checked; renderAll(); });
 $('#firstTx').addEventListener('change', e=>{ S.firstTx=e.target.checked; renderAll(); });
 $('#tabs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) setTab(b.dataset.tab); });
 $('#q').addEventListener('input', renderProducts);
@@ -752,7 +772,7 @@ $('#prodList').addEventListener('click', e=>{ const b=e.target.closest('button[d
 $('#prodList').addEventListener('input', e=>{ if(e.target.tagName!=='INPUT') return; setQty(e.target.closest('.prod').dataset.id, e.target.value); });
 document.addEventListener('click', e=>{
   const a=e.target.closest('[data-add]'); if(a){ const id=a.dataset.add; setQty(id,(+S.cart[id]||0)+(+a.dataset.qty)); toast('+'+a.dataset.qty+' '+BYID[id].name); return; }
-  const s=e.target.closest('[data-sim]'); if(s){ const p=PROGRAMS.find(x=>x.id===s.dataset.sim); if(p.firstTx){ S.firstTx=true; } const qn=p.addBy?p.addBy[S.ch]:p.add; if(!S.cart[p.sku]) S.cart[p.sku]=qn; setTab('sim'); renderAll(); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  const s=e.target.closest('[data-sim]'); if(s){ const p=PROGRAMS.find(x=>x.id===s.dataset.sim); if(p.firstTx){ S.firstTx=true; } const qn=addQty(p); if(!S.cart[p.sku]) S.cart[p.sku]=qn; setTab('sim'); renderAll(); window.scrollTo({top:0,behavior:'smooth'}); return; }
   const g=e.target.closest('[data-goto]'); if(g){ setTab(g.dataset.goto); return; }
   const z=e.target.closest('[data-zone]'); if(z){ ikSel=z.dataset.zone; renderIkat(); }
 });
