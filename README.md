@@ -15,3 +15,10 @@ Web app interaktif (satu file `index.html`, tanpa instalasi) untuk sales mensimu
 Buka `index.html` di browser (bisa juga di-hosting lewat GitHub Pages).
 
 > Simulasi saja – harga final mengikuti setting Matrix & invoice.
+
+## Link untuk HP (GitHub Pages)
+https://dimscm.github.io/Kalkulator-Pintar-November/
+
+Aktifkan sekali di **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `ccr-30ad732f-4xs0xk` / `(root)` → Save**. Setiap push ke branch itu otomatis memperbarui link.
+
+Di HP: buka link → menu browser → **Tambahkan ke Layar Utama** agar bisa dibuka seperti aplikasi.
