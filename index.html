@@ -143,7 +143,7 @@ footer{padding:20px 0 8px;font-size:12px;color:var(--muted)}
 <header class="top">
   <div class="wrap">
     <h1>Kalkulator Pintar Sales</h1>
-    <p>Program &amp; Harga Nett November 2026 · periode 26 Okt – 22 Nov 2026 · <span id="daysLeft"></span></p>
+    <p>Program &amp; Harga Nett November 2026 · periode 26 Okt – 22 Nov 2026 (update Mading, + Aspen 700ml) · <span id="daysLeft"></span></p>
   </div>
 </header>
 
@@ -158,6 +158,10 @@ footer{padding:20px 0 8px;font-size:12px;color:var(--muted)}
       <select id="grsm"></select>
     </div>
     <div class="small muted" id="chInfo" style="flex-basis:100%;margin-top:-4px"></div>
+    <div id="aspWrap">
+      <label class="lbl" for="aspMode">Aspen (Gromin/SO)</label>
+      <select id="aspMode"><option value="fixdel">Fixdel</option><option value="induk">Induk</option></select>
+    </div>
     <label class="tog"><input type="checkbox" id="firstTx"> Transaksi pertama TPH 350 LS</label>
   </div>
 </div>
@@ -245,7 +249,7 @@ footer{padding:20px 0 8px;font-size:12px;color:var(--muted)}
   <section class="tab" id="tab-pl">
     <div class="card"><h2>Price List November 2026 (per karton, termasuk PPN)</h2>
       <div class="bd tbl" id="plTable"></div></div>
-    <div class="card" style="margin-top:16px"><h2>Aspen — harga per pack (tidak ada program November)</h2>
+    <div class="card" style="margin-top:16px"><h2>Aspen — harga per shrink/pack (Fixdel / Induk)</h2>
       <div class="bd tbl">
         <table><thead><tr><th>SKU</th><th class="n">Retail 1 pack</th><th class="n">Retail 2 pack up</th><th class="n">SO Fixdel</th><th class="n">SO Induk</th><th class="n">Gromin Fixdel</th><th class="n">Gromin Induk</th><th class="n">GMM</th></tr></thead>
         <tbody>
@@ -322,7 +326,12 @@ const PRODUCTS = [
   P('lucky','Kopiko & Collagena','Kopiko Lucky Day 180ml',64800,63300,62550),
   P('col12','Kopiko & Collagena','Collagena 12\'s (kaleng)',120000,116000,114600,{prog:['colret','coldist']}),
   P('colmp','Kopiko & Collagena','Collagena Multipack',228000,220400,217700),
+  P('asp700','Aspen','Aspen 700ml (12 btl)',21000,18000,18000,{unit:'shrink',prog:['aspfak','aspret'],
+    plFn:()=>{ const c=CHN[S.ch], b=c.base; if(c.gmm) return 18000; if(b==='retail') return 21000; return b==='gromin' ? (S.aspen==='induk'?19000:18000) : (S.aspen==='induk'?18500:18000); }}),
+  P('asp250','Aspen','Aspen 250ml (24 btl)',18360,16360,16360,{unit:'pack',
+    plFn:()=>{ const c=CHN[S.ch], b=c.base; if(c.gmm) return 16360; if(b==='retail') return 18360; return b==='gromin' ? (S.aspen==='induk'?17360:16360) : (S.aspen==='induk'?16860:16360); }}),
 ];
+const priceOf = p => p.plFn ? p.plFn() : p.pl[CHN[S.ch] ? CHN[S.ch].base : 'gromin'];
 const BYID = Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
 
 /* Le Minerale botol: tabel nett per tier [retail, gromin, so] */
@@ -339,6 +348,7 @@ const TPH_DOF = [{min:25,disc:200,label:'25–99'},{min:100,disc:300,label:'100�
 const NM_TIERS = [{min:5,disc:200,label:'5–19'},{min:20,disc:300,label:'20–74'},{min:75,disc:400,label:'75–149'},{min:150,disc:500,label:'150–249'},{min:250,disc:600,label:'250–449'},{min:450,disc:650,label:'450–699'},{min:700,disc:700,label:'≥700'}];
 const K78_TIERS = [{min:5,disc:600,label:'5–9'},{min:10,disc:1200,label:'10–49'},{min:50,disc:1800,label:'≥50'}];
 const S7K_TIERS = [{min:10,disc:2000,label:'10–14'},{min:15,disc:3000,label:'15–24'},{min:25,disc:4000,label:'≥25'}];
+const ASP_TIERS = [{min:6,disc:1000,label:'6–24'},{min:25,disc:1500,label:'25–49'},{min:50,disc:2000,label:'≥50'}];
 const COL_TIERS = [{min:15,pct:2,label:'15–24'},{min:25,pct:4,label:'≥25'}];
 const GAL15 = {retail:{min:10,disc:500}, gromin:{min:60,disc:300}, so:{min:250,disc:300}};
 
@@ -378,10 +388,14 @@ const PROGRAMS = [
    desc:'Disc Rp3.000 per 6 kaleng, kelipatan, maks. Rp12.000/transaksi. PL Rp120.000 → nett Rp114.000 (1 ctn).',sku:'col12',add:2},
   {id:'coldist',brand:'Kopiko & Collagena',title:'Distribusi Collagena',ch:['so','grosir','gromin','tdp'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
    desc:'15–24 ctn disc 2% · ≥25 ctn disc 4%.',sku:'col12',add:15},
+  {id:'aspfak',brand:'Aspen',title:'Diskon On Faktur Aspen 700ml (BARU)',ch:['grosir','gromin','so','gmmret','gmmws','gmmso'],reg:['3A'],start:'2026-10-26',end:'2026-11-22',
+   desc:'Strata per faktur per shrink: 6–25 ctn Rp1.000 · 25–50 ctn Rp1.500 · 50 ctn up Rp2.000. GMM, Gromin, SO. Tidak berlaku TDP Gromin.',sku:'asp700',add:6},
+  {id:'aspret',brand:'Aspen',title:'Program Pembelian Aspen 700ml · Retail Terdaftar',ch:['retail','retkhusus'],reg:['3A'],start:'2026-10-26',end:'2026-11-22',
+   desc:'Beli 2 shrink bonus 4 botol TPH Ori 350ml, kelipatan, maks. 6 paket (12 shrink = 1 karton TPH Ori 350ml). Hanya retail terdaftar, tidak berlaku GMM, Gromin & SO.',sku:'asp700',add:2},
 ];
 
 /* ================= STATE ================= */
-const S = {ch:'gromin', grsm:'3A', firstTx:false, cart:{}, tab:'sim'};
+const S = {ch:'gromin', grsm:'3A', aspen:'fixdel', firstTx:false, cart:{}, tab:'sim'};
 try{ const s = JSON.parse(localStorage.getItem('kps-nov26')||'null'); if(s) Object.assign(S, s); }catch(e){}
 if(!CHN[S.ch]) S.ch='gromin';
 const base = () => CHN[S.ch].base;
@@ -414,7 +428,7 @@ function compute(){
   const ch = base(), cart = S.cart, C = CHN[S.ch];
   const q = id => Math.max(0, +cart[id]||0);
   const lines = {}, bonuses = [], recs = [];
-  for(const p of PRODUCTS){ if(q(p.id)>0) lines[p.id] = {p, qty:q(p.id), pl:p.pl[ch], disc:0, tags:[]}; }
+  for(const p of PRODUCTS){ if(q(p.id)>0) lines[p.id] = {p, qty:q(p.id), pl:priceOf(p), disc:0, tags:[]}; }
   const L = id => lines[id];
   const setUnitDisc = (id, d, tag, cls='ok') => { const l=L(id); if(!l) return; l.disc = d*l.qty; if(tag) l.tags.push([tag,cls]); };
   const addRec = (r) => recs.push(r);
@@ -581,6 +595,30 @@ function compute(){
       const nt=nextTier(qq,COL_TIERS); if(nt){ const need=nt.min-qq; addRec({hot:need<=Math.max(3,qq*0.3), prog:'coldist', title:'Collagena: tambah '+need+' ctn → disc '+nt.pct+'%', text:'Nett jadi '+fmt(pl*(1-nt.pct/100))+'/ctn.', add:{id:'col12',qty:need}}); }
     }
   }
+  /* Aspen 700ml */
+  if(q('asp700')>0){
+    const qq=q('asp700'), l=L('asp700');
+    if(!C.gmm && ch!=='retail') l.tags.push(['Harga '+(S.aspen==='induk'?'Induk':'Fixdel'),'']);
+    if(ch==='retail' && !C.gmm && qq>=2) setUnitDisc('asp700',1000,'Harga 2 pack up Rp20.000');
+    if(!inReg(['3A'])) l.tags.push(['Program Aspen 700ml hanya GR 3A','bad']);
+    else if(can('aspret')){
+      const paket=Math.min(6,Math.floor(qq/2)), btl=paket*4;
+      l.tags.push(['Khusus retail terdaftar (data terlampir)','warn']);
+      if(btl) bonuses.push({prog:'aspret', text:'Aspen 700ml: bonus <b>'+(btl===24?'1 karton (24 botol)':btl+' botol')+' TPH Ori 350ml</b>', value:btl*BYID.tph350j.pl.retail/24});
+      if(paket<6){ const need = qq%2 ? 1 : (qq>=8 ? 12-qq : 2);
+        addRec({hot: qq%2===1 || qq>=8, prog:'aspret', title:'Aspen 700ml: tambah '+need+' shrink → bonus TPH Ori jadi '+Math.min(24,Math.floor((qq+need)/2)*4)+' botol',
+          text:'Tiap 2 shrink bonus 4 botol TPH Ori 350ml, maks. 12 shrink = 1 karton.', add:{id:'asp700',qty:need}}); }
+    } else if(can('aspfak')){
+      const t=tierOf(qq,ASP_TIERS); if(t) setUnitDisc('asp700',t.disc,'On faktur '+t.label+' −Rp'+num(t.disc)+'/shrink');
+      const nt=nextTier(qq,ASP_TIERS); if(nt){ const need=nt.min-qq; addRec({hot:need<=Math.max(3,qq*0.3), prog:'aspfak', title:'Aspen 700ml: tambah '+need+' shrink → strata '+nt.label,
+        text:'Diskon jadi Rp'+num(nt.disc)+'/shrink. Total diskon '+fmt(nt.disc*nt.min)+' (sekarang '+fmt((t?t.disc:0)*qq)+'). Strata dihitung per faktur.', add:{id:'asp700',qty:need}}); }
+    } else l.tags.push(['Tanpa promo untuk '+CH_NAME[S.ch],'warn']);
+  }
+  if(q('asp250')>0){
+    if(ch==='retail' && !C.gmm && q('asp250')>=2) setUnitDisc('asp250',500,'Harga 2 pack up Rp17.860');
+    else if(!C.gmm && ch!=='retail') L('asp250').tags.push(['Harga '+(S.aspen==='induk'?'Induk':'Fixdel'),'']);
+    L('asp250').tags.push(['Tanpa program November','']);
+  }
   /* untagged lines */
   for(const l of Object.values(lines)) if(!l.p.prog && !l.tags.length) l.tags.push(['Tanpa program November','']);
 
@@ -607,7 +645,7 @@ function renderProducts(){
     if(f && !(p.name+' '+p.brand).toLowerCase().includes(f)) continue;
     if(p.brand!==brand){ brand=p.brand; html += '<div class="brand">'+esc(brand)+'</div>'; }
     const qty = +S.cart[p.id]||0;
-    html += '<div class="prod'+(qty?' has':'')+'" data-id="'+p.id+'"><div class="nm"><b>'+esc(p.name)+'</b><small>PL '+BASE_NAME[base()]+' '+fmt(p.pl[base()])+'/'+p.unit+'</small></div>'+
+    html += '<div class="prod'+(qty?' has':'')+'" data-id="'+p.id+'"><div class="nm"><b>'+esc(p.name)+'</b><small>PL '+BASE_NAME[base()]+' '+fmt(priceOf(p))+'/'+p.unit+'</small></div>'+
       '<div class="step"><button data-d="-1" aria-label="Kurangi">−</button><input type="number" inputmode="numeric" min="0" value="'+(qty||'')+'" placeholder="0" aria-label="Qty '+esc(p.name)+'"><button data-d="1" aria-label="Tambah">+</button></div></div>';
   }
   $('#prodList').innerHTML = html || '<div class="empty">SKU tidak ditemukan</div>';
@@ -678,7 +716,7 @@ function renderPL(){
     const progs=(p.prog||[]).map(id=>PROGRAMS.find(x=>x.id===id)).filter(Boolean).map(x=>x.title).join(' · ');
     h+='<tr><td>'+esc(p.name)+(p.unit!=='ctn'?' <span class="muted small">(per '+p.unit+')</span>':'')+'</td><td class="n">'+num(p.pl.retail)+'</td><td class="n">'+num(p.pl.gromin)+'</td><td class="n">'+num(p.pl.so)+'</td><td class="small muted">'+(esc(progs)||'—')+'</td></tr>';
   }
-  $('#plTable').innerHTML = h+'</tbody></table><p class="note">LM botol: tabel nett per tier ada di Simulasi (tier dihitung dari akumulasi mix 4 SKU). Harga sudah termasuk PPN 11%.</p>';
+  $('#plTable').innerHTML = h+'</tbody></table><p class="note">Aspen: kolom Gromin/SO = harga Fixdel, GMM Aspen 700ml Rp18.000 · rincian Induk di tabel Aspen. LM botol: tabel nett per tier ada di Simulasi (tier dihitung dari akumulasi mix 4 SKU). Harga sudah termasuk PPN 11%.</p>';
 }
 
 /* ---- Ikat Target ---- */
@@ -760,6 +798,7 @@ function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('on'
 function setQty(id, v){ v=Math.max(0, Math.floor(+v||0)); if(v) S.cart[id]=v; else delete S.cart[id]; renderSummary(); }
 function setTab(t){ S.tab=t; document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===t)); document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+t)); $('#bar').style.display = t==='sim'?'':'none'; document.body.style.paddingBottom = t==='sim'?'84px':'0'; save(); }
 function renderAll(){
+  $('#aspWrap').style.display = (base()!=='retail' && !CHN[S.ch].gmm) ? '' : 'none'; $('#aspMode').value=S.aspen||'fixdel';
   $('#chSel').value=S.ch; $('#grsm').value=S.grsm; $('#firstTx').checked=S.firstTx;
   const nOk = PROGRAMS.filter(p=>progEligible(p).ok && progActive(p)).length;
   $('#chInfo').textContent = CHN[S.ch].name+' · harga dasar PL '+BASE_NAME[base()]+' · '+nOk+' program berlaku di GRSM '+S.grsm;
@@ -770,6 +809,7 @@ $('#grsm').innerHTML = GRSM.map(g=>'<option value="'+g+'">GRSM '+g+'</option>').
 $('#chSel').innerHTML = [...new Set(CHANNELS.map(c=>c.grp))].map(g=>'<optgroup label="'+g+'">'+CHANNELS.filter(c=>c.grp===g).map(c=>'<option value="'+c.id+'">'+esc(c.short||c.name)+'</option>').join('')+'</optgroup>').join('');
 $('#chSel').addEventListener('change', e=>{ S.ch=e.target.value; if(base()!=='retail'){ $('#ikCh').value=base(); $('#gcCh').value=base(); } renderAll(); renderIkat(); });
 $('#grsm').addEventListener('change', e=>{ S.grsm=e.target.value; renderAll(); });
+$('#aspMode').addEventListener('change', e=>{ S.aspen=e.target.value; renderAll(); });
 $('#firstTx').addEventListener('change', e=>{ S.firstTx=e.target.checked; renderAll(); });
 $('#tabs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) setTab(b.dataset.tab); });
 $('#q').addEventListener('input', renderProducts);
