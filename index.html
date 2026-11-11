@@ -308,7 +308,7 @@ const PRODUCTS = [
   P('lychee','Teh Pucuk Harum','TPH Lychee Bliss 350ml',65000,63200,62600,{prog:['lychee']}),
   P('tph250','Teh Pucuk Harum','TPH 250ml (4 bnd × 6)',59500,58000,57500),
   P('tetra','Teh Pucuk Harum','TPH Tetra 300ml Jasmine / LS',72000,69700,68800),
-  P('lm600','Le Minerale','LM 600ml',48000,46300,45000,{prog:['lmdof']}),
+  P('lm600','Le Minerale','LM 600ml',48000,46300,45000,{prog:['lmdof','bundle']}),
   P('lm1500','Le Minerale','LM 1500ml',54000,52000,49500,{prog:['lmdof']}),
   P('lm330','Le Minerale','LM 330ml',38500,36500,35500,{prog:['lmdof']}),
   P('lm3l','Le Minerale','LM 3 Liter',48000,46450,45800,{prog:['lmdof']}),
@@ -322,7 +322,7 @@ const PRODUCTS = [
   P('nm1l','Nipis Madu','Nipis Madu 1 Liter (12 btl)',110000,107500,106500),
   P('k78c','Kopiko & Collagena','Kopiko 78C (12 btl)',70200,68600,67900,{prog:['k78c']}),
   P('k78c24','Kopiko & Collagena','Kopiko 78C (24 btl)',138000,134800,133400),
-  P('kopikap','Kopiko & Collagena','Kopikap Jumbo 200ml',38400,37900,37550),
+  P('kopikap','Kopiko & Collagena','Kopikap Jumbo 200ml',38400,37900,37550,{prog:['bundle']}),
   P('lucky','Kopiko & Collagena','Kopiko Lucky Day 180ml',64800,63300,62550),
   P('col12','Kopiko & Collagena','Collagena 12\'s (kaleng)',120000,116000,114600,{prog:['colret','coldist']}),
   P('colmp','Kopiko & Collagena','Collagena Multipack',228000,220400,217700),
@@ -388,6 +388,8 @@ const PROGRAMS = [
    desc:'Disc Rp3.000 per 6 kaleng, kelipatan, maks. Rp12.000/transaksi. PL Rp120.000 → nett Rp114.000 (1 ctn).',sku:'col12',add:2},
   {id:'coldist',brand:'Kopiko & Collagena',title:'Distribusi Collagena',ch:['so','grosir','gromin','tdp'],reg:ALL,start:'2026-10-26',end:'2026-11-22',
    desc:'15–24 ctn disc 2% · ≥25 ctn disc 4%.',sku:'col12',add:15},
+  {id:'bundle',brand:'Kopiko & Collagena',title:'Bundling Kopikap Jumbo + LM 600ml (BARU)',ch:RET,reg:G34,start:'2026-10-26',end:'2026-11-22',
+   desc:'Beli 1 ctn Kopikap Jumbo + 1 ctn LM 600ml → disc LM 600ml Rp5.000 per paket, kelipatan. Nett paket Rp81.400 (dari Rp86.400). Retail GT termasuk GMM Retail, TDP Retail, Lokpen, Kuliner, TU.',sku:'kopikap,lm600',add:'1,1'},
   {id:'aspfak',brand:'Aspen',title:'Diskon On Faktur Aspen 700ml (BARU)',ch:['grosir','gromin','so','gmmret','gmmws','gmmso'],reg:['3A'],start:'2026-10-26',end:'2026-11-22',
    desc:'Strata per faktur per shrink: 6–25 ctn Rp1.000 · 25–50 ctn Rp1.500 · 50 ctn up Rp2.000. GMM, Gromin, SO. Tidak berlaku TDP Gromin.',sku:'asp700',add:6},
   {id:'aspret',brand:'Aspen',title:'Program Pembelian Aspen 700ml · Retail Terdaftar',ch:['retail','retkhusus'],reg:['3A'],start:'2026-10-26',end:'2026-11-22',
@@ -595,6 +597,17 @@ function compute(){
       const nt=nextTier(qq,COL_TIERS); if(nt){ const need=nt.min-qq; addRec({hot:need<=Math.max(3,qq*0.3), prog:'coldist', title:'Collagena: tambah '+need+' ctn → disc '+nt.pct+'%', text:'Nett jadi '+fmt(pl*(1-nt.pct/100))+'/ctn.', add:{id:'col12',qty:need}}); }
     }
   }
+  /* Bundling Kopikap Jumbo + LM 600ml */
+  if(q('kopikap')>0 || q('lm600')>0){
+    const kk=q('kopikap'), lm=q('lm600');
+    if(can('bundle') && inReg(G34) && active('bundle')){
+      const pk=Math.min(kk,lm);
+      if(pk){ L('lm600').disc += 5000*pk; L('lm600').tags.push(['Bundling Kopikap: '+pk+' paket −Rp5.000/paket','ok']); L('kopikap').tags.push(['Bundling dengan LM 600ml ('+pk+' paket)','ok']); }
+      if(kk!==lm){ const id = kk>lm ? 'lm600' : 'kopikap', need=Math.abs(kk-lm);
+        addRec({hot: need<=3 || pk===0, prog:'bundle', title:'Bundling: tambah '+need+' ctn '+BYID[id].name+' → +'+need+' paket',
+          text:'Tiap 1 ctn Kopikap Jumbo + 1 ctn LM 600ml dapat disc Rp5.000. Tambahan diskon '+fmt(5000*need)+'.', add:{id, qty:need}}); }
+    } else if(kk>0 && !can('bundle')) L('kopikap').tags.push(['Tanpa program untuk '+CH_NAME[S.ch],'']);
+  }
   /* Aspen 700ml */
   if(q('asp700')>0){
     const qq=q('asp700'), l=L('asp700');
@@ -682,7 +695,7 @@ function renderSummary(){
     r += '<p class="small muted" style="margin:14px 0 4px;font-weight:600">Program lain yang berlaku untuk outlet ini:</p>';
     for(const p of R.cross){ const qn = addQty(p);
       r += '<div class="rec"><span class="ic" style="background:var(--accent)">+</span><div class="tx"><b>'+esc(p.title)+'</b>'+esc(p.desc)+(daysTo(p.end)<=7?' <span class="tag acc">sisa '+daysTo(p.end)+' hari</span>':'')+'</div>'+
-        '<button class="btn sm" data-add="'+p.sku+'" data-qty="'+qn+'">Coba '+qn+'</button></div>'; }
+        '<button class="btn sm" data-add="'+p.sku+'" data-qty="'+qn+'">Coba '+String(qn).split(',')[0]+(String(qn).includes(',')?' paket':'')+'</button></div>'; }
   }
   if(!r) r='<div class="empty">Tidak ada rekomendasi tambahan — order sudah optimal 👍</div>';
   $('#recs').innerHTML = r;
@@ -816,8 +829,8 @@ $('#q').addEventListener('input', renderProducts);
 $('#prodList').addEventListener('click', e=>{ const b=e.target.closest('button[data-d]'); if(!b) return; const id=b.closest('.prod').dataset.id; setQty(id, (+S.cart[id]||0) + (+b.dataset.d)); });
 $('#prodList').addEventListener('input', e=>{ if(e.target.tagName!=='INPUT') return; setQty(e.target.closest('.prod').dataset.id, e.target.value); });
 document.addEventListener('click', e=>{
-  const a=e.target.closest('[data-add]'); if(a){ const id=a.dataset.add; setQty(id,(+S.cart[id]||0)+(+a.dataset.qty)); toast('+'+a.dataset.qty+' '+BYID[id].name); return; }
-  const s=e.target.closest('[data-sim]'); if(s){ const p=PROGRAMS.find(x=>x.id===s.dataset.sim); if(p.firstTx){ S.firstTx=true; } const qn=addQty(p); if(!S.cart[p.sku]) S.cart[p.sku]=qn; setTab('sim'); renderAll(); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  const a=e.target.closest('[data-add]'); if(a){ const ids=a.dataset.add.split(','), qs=String(a.dataset.qty).split(','); ids.forEach((id,i)=>{ S.cart[id]=(+S.cart[id]||0)+(+qs[i]||+qs[0]); }); renderSummary(); toast('+ '+ids.map((id,i)=>(qs[i]||qs[0])+' '+BYID[id].name).join(', ')); return; }
+  const s=e.target.closest('[data-sim]'); if(s){ const p=PROGRAMS.find(x=>x.id===s.dataset.sim); if(p.firstTx){ S.firstTx=true; } const ids=p.sku.split(','), qs=String(addQty(p)).split(','); ids.forEach((id,i)=>{ if(!S.cart[id]) S.cart[id]=+(qs[i]||qs[0]); }); setTab('sim'); renderAll(); window.scrollTo({top:0,behavior:'smooth'}); return; }
   const g=e.target.closest('[data-goto]'); if(g){ setTab(g.dataset.goto); return; }
   const z=e.target.closest('[data-zone]'); if(z){ ikSel=z.dataset.zone; renderIkat(); }
 });
